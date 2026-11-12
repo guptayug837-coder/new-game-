@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yu Tu - Battle Royale</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: #fff;
+            text-align: center;
+            font-family: sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        h1 {
+            margin: 5px 0;
+            color: #ff4757;
+            font-size: 22px;
+        }
+        #info {
+            font-size: 14px;
+            color: #fbc531;
+            margin-bottom: 5px;
+        }
+        canvas {
+            background: #2f3640;
+            display: block;
+            margin: auto;
+            border: 2px solid #fbc531;
+            box-shadow: 0 0 10px rgba(251, 197, 49, 0.5);
+        }
+        #controls {
+            margin-top: 10px;
+        }
+        .btn-row {
+            margin: 5px 0;
+        }
+        button {
+            padding: 12px 22px;
+            font-size: 16px;
+            background: #e84118;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            box-shadow: 0 4px #c23616;
+        }
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px #c23616;
+        }
+        #shootBtn {
+            background: #44bd32;
+            box-shadow: 0 4px #27ae60;
+        }
+        #shootBtn:active {
+            box-shadow: 0 2px #27ae60;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>YU TU - Battle Royale</h1>
+    <div id="info">Score: <span id="scoreVal">0</span> | Health: <span id="healthVal">100</span></div>
+    
+    <canvas id="gameCanvas" width="360" height="400"></canvas>
+
+    <div id="controls">
+        <div class="btn-row">
+            <button onclick="movePlayer('UP')">⬆️ Up</button>
+        </div>
+        <div class="btn-row">
+            <button onclick="movePlayer('LEFT')">⬅️ Left</button>
+            <button id="shootBtn" onclick="shootBullet()">🔥 Shoot Gun</button>
+            <button onclick="movePlayer('RIGHT')">Right ➡️</button>
+        </div>
+        <div class="btn-row">
+            <button onclick="movePlayer('DOWN')">⬇️ Down</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Player (Ladka) details
+        let player = { x: 180, y: 340, width: 24, height: 32, speed: 20, color: '#00a8ff' };
+        
+        // Bullets array
+        let bullets = [];
+
+        // Enemy (Bot) details
+        let enemy = { x: 180, y: 40, width: 24, height: 32, color: '#e84118', speed: 0.8 };
+
+        let score = 0;
+        let health = 100;
+        let isGameOver = false;
+
+        function movePlayer(direction) {
+            if (isGameOver) return;
+            if (direction === 'UP' && player.y > 10) player.y -= player.speed;
+            if (direction === 'DOWN' && player.y < canvas.height - player.height - 10) player.y += player.speed;
+            if (direction === 'LEFT' && player.x > 10) player.x -= player.speed;
+            if (direction === 'RIGHT' && player.x < canvas.width - player.width - 10) player.x += player.speed;
+        }
+
+        function shootBullet() {
+            if (isGameOver) return;
+            // Goli player ke center se nikalegi (Gun se)
+            bullets.push({ x: player.x + player.width / 2 - 2, y: player.y, width: 4, height: 10, speed: 6 });
+        }
+
+        function update() {
+            if (isGameOver) return;
+
+            // Enemy tracking player
+            if (enemy.x < player.x) enemy.x += enemy.speed;
+            if (enemy.x > player.x) enemy.x -= enemy.speed;
+            if (enemy.y < player.y) enemy.y += enemy.speed;
+            if (enemy.y > player.y) enemy.y -= enemy.speed;
+
+            // Check collision between enemy and player
+            if (Math.abs(player.x - enemy.x) < 20 && Math.abs(player.y - enemy.y) < 20) {
+                health -= 1;
+                document.getElementById("healthVal").innerText = health;
+                if (health <= 0) {
+                    isGameOver = true;
+                }
+            }
+
+            // Move bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bullets[i].speed;
+
+                // Check collision with enemy
+                if (
+                    bullets[i].x < enemy.x + enemy.width &&
+                    bullets[i].x + bullets[i].width > enemy.x &&
+                    bullets[i].y < enemy.y + enemy.height &&
+                    bullets[i].y + bullets[i].height > enemy.y
+                ) {
+                    // Enemy hit!
+                    score += 10;
+                    document.getElementById("scoreVal").innerText = score;
+                    // Respawn enemy at random top position
+                    enemy.x = Math.random() * (canvas.width - 40) + 20;
+                    enemy.y = 20;
+                    enemy.speed += 0.1; // Level thoda hard hoga
+                    bullets.splice(i, 1);
+                } else if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+        }
+
+        function drawCharacter(x, y, color, hasGun) {
+            // Sir (Head)
+            ctx.beginPath();
+            ctx.arc(x + 12, y + 8, 8, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffdd59"; // Skin tone
+            ctx.fill();
+            ctx.closePath();
+
+            // Body / Dress
+            ctx.fillStyle = color;
+            ctx.fillRect(x + 4, y + 16, 16, 14);
+
+            // Legs
+            ctx.fillStyle = "#333";
+            ctx.fillRect(x + 5, y + 30, 5, 8);
+            ctx.fillRect(x + 14, y + 30, 5, 8);
+
+            // Banduk (Gun in hand)
+            if (hasGun) {
+                ctx.fillStyle = "#fff";
+                ctx.fillRect(x + 18, y + 14, 6, 3); // Gun barrel
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (isGameOver) {
+                ctx.fillStyle = "#ff4757";
+                ctx.font = "26px sans-serif";
+                ctx.fillText("GAME OVER", 95, 200);
+                ctx.fillStyle = "#fff";
+                ctx.font = "16px sans-serif";
+                ctx.fillText("Reload page to play again", 90, 230);
+                return;
+            }
+
+            // Draw Player (Ladka with Gun)
+            drawCharacter(player.x, player.y, player.color, true);
+
+            // Draw Enemy (Bot)
+            drawCharacter(enemy.x, enemy.y, enemy.color, false);
+
+            // Draw Bullets
+            for (let b of bullets) {
+                ctx.fillStyle = '#fbc531';
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
